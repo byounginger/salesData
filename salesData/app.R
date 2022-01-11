@@ -77,7 +77,7 @@ ui <- fluidPage(title = "SalesData",
                                       
                                       fluidPage(
                                           
-                                          fluidRow(column(width = 10, plotOutput("weeklySalesPlot"), p(span(strong("Figure 1."), "Weekly sales of 45 stores"))), column(width = 2, wellPanel(selectInput("holidayVal", label = "Holiday status", choices = c("Both", "Yes", "No"))))),
+                                          fluidRow(column(width = 10, plotlyOutput("weeklySalesPlot"), p(span(strong("Figure 1."), "Weekly sales of 45 stores"))), column(width = 2, wellPanel(selectInput("holidayVal", label = "Holiday status", choices = c("Both", "Yes", "No"))))),
                                           
                                           linebreaks(2)
                                       ))
@@ -91,7 +91,7 @@ server <- function(input, output) {
   
   ##### Weekly Sales #####
   # Weekly sales plot selected by holiday
-  output$weeklySalesPlot <- renderPlot({
+  output$weeklySalesPlot <- renderPlotly({
       
       if(input$holidayVal == "Yes"){
         
@@ -109,16 +109,27 @@ server <- function(input, output) {
       }
     
     # The plot
-    ggplot(walmart, aes(x = reorder(Store, MedianSales), 
-                               y = Weekly_Sales, 
-                               fill = Store)) + 
-      geom_boxplot() + 
-      theme_bw() + 
-      theme(legend.position = "none", 
-            panel.grid = element_blank(), 
-            axis.text.x = element_text(angle = 70, hjust = 1)) + 
-      ylab(ylab) + 
-      xlab("Store")
+    walmart %>%
+      plot_ly(x = ~reorder(Store, MedianSales), y = ~Weekly_Sales, 
+              color = ~Store, type = "box", hoverinfo = "text",
+              showlegend = FALSE,
+              text = ~paste("Store:", Store, "<br>", 
+                            "Date:", Date, "<br>", 
+                            "Weekly sales:", Weekly_Sales)) %>%
+      layout(yaxis = list(showline = TRUE, title = ylab), 
+             xaxis = list(showline = TRUE, tickangle = -45, hjust = -1, 
+                          title = "Store"))
+    
+    # ggplot(walmart, aes(x = reorder(Store, MedianSales), 
+    #                            y = Weekly_Sales, 
+    #                            fill = Store)) + 
+    #   geom_boxplot() + 
+    #   theme_bw() + 
+    #   theme(legend.position = "none", 
+    #         panel.grid = element_blank(), 
+    #         axis.text.x = element_text(angle = 70, hjust = 1)) + 
+    #   ylab(ylab) + 
+    #   xlab("Store")
     })
 }
 
