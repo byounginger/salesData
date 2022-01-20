@@ -2,7 +2,7 @@ library(shiny)
 library(ggplot2)
 library(tidyverse)
 # library(ggpubr)
-# library(DT)
+library(DT)
 # library(phyloseq)
 library(RColorBrewer)
 library(plotly)
@@ -73,6 +73,15 @@ ui <- fluidPage(title = "SalesData",
                 
                 navlistPanel(widths = c(2,10),
                              
+                             tabPanel("Summary Statistics", 
+                                      
+                                      fluidPage(
+                                        
+                                        fluidRow(column(width = 8, offset = 1, p(span(strong("Table 1."), "Summary statistics for the Walmart weekly sales dataset")), DT::dataTableOutput("sumStatsTable"))), 
+                                        
+                                        linebreaks(2)
+                                      )),
+                             
                              tabPanel("Weekly Sales", 
                                       
                                       fluidPage(
@@ -88,6 +97,27 @@ ui <- fluidPage(title = "SalesData",
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+  
+  ##### Summary Statistics #####
+  # Summary stats data table
+  output$sumStatsTable <- renderDataTable({
+    
+    sumTable <- walmart %>% dplyr::group_by(Store) %>% 
+      summarise(MeanWeeklySales = mean(Weekly_Sales), 
+                # SEMWeeklySales = sem(Weekly_Sales), 
+                MedianWeeklySales = median(Weekly_Sales), 
+                MeanTemp = mean(Temperature), 
+                MeanFuel = mean(Fuel_Price), 
+                MeanCPI = mean(CPI), 
+                MeanUnemp = mean(Unemployment))
+    
+    datatable(sumTable, rownames = FALSE, 
+              colnames = c("Mean Weekly Sales", "Median Weekly Sales", 
+                           "Mean Temp (\u00B0F)", "Mean Fuel Price ($)", 
+                           "Mean CPI", "Mean Unemployment"),
+              options = list(
+      columnDefs = list(list(className = 'dt-center', targets = "_all")), pageLength = 10)) %>% formatRound(colnames(sumTable), digits = c(0, 0, 0, 1, 2, 2, 2)) 
+  })
   
   ##### Weekly Sales #####
   # Weekly sales plot selected by holiday
@@ -119,18 +149,8 @@ server <- function(input, output) {
       layout(yaxis = list(showline = TRUE, title = ylab), 
              xaxis = list(showline = TRUE, tickangle = -45, hjust = -1, 
                           title = "Store"))
-    
-    # ggplot(walmart, aes(x = reorder(Store, MedianSales), 
-    #                            y = Weekly_Sales, 
-    #                            fill = Store)) + 
-    #   geom_boxplot() + 
-    #   theme_bw() + 
-    #   theme(legend.position = "none", 
-    #         panel.grid = element_blank(), 
-    #         axis.text.x = element_text(angle = 70, hjust = 1)) + 
-    #   ylab(ylab) + 
-    #   xlab("Store")
     })
+
 }
 
 # Run the application 
