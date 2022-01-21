@@ -48,6 +48,10 @@ walmart$Store <- as.factor(walmart$Store)
 walmart <- walmart %>% group_by(Store) %>% 
   mutate(MedianSales = median(Weekly_Sales)) %>% 
   arrange(desc(MedianSales))
+
+# Change the date format
+walmart <- walmart %>% separate(Date, into = c("Day", "Month", "Year"), sep = "-")
+walmart <- walmart %>% unite("Date", c("Year", "Month", "Day"), sep = "-")
 ######################################
 
 # Define UI for application that draws a histogram
@@ -86,8 +90,11 @@ ui <- fluidPage(title = "SalesData",
                                       
                                       fluidPage(
                                           
-                                          fluidRow(column(width = 10, plotlyOutput("weeklySalesPlot"), p(span(strong("Figure 1."), "Weekly sales of 45 stores"))), column(width = 2, wellPanel(selectInput("holidayVal", label = "Holiday status", choices = c("Both", "Yes", "No"))))),
+                                          fluidRow(column(width = 10, plotlyOutput("weeklySalesPlot"), p(span(strong("Figure 1."), "Weekly sales of 45 stores"))), column(width = 2, wellPanel(selectInput("holidayVal", label = "Holiday status", choices = c("Both", "Holiday", "Non-holiday"))))),
                                           
+                                          linebreaks(2), 
+                                          
+                                          fluidRow(column(width = 2, wellPanel(selectInput("storeRank", label = "Store rank", choices = c('Top third', 'Middle third', 'Bottom third')))), column(width = 6, plotlyOutput("dynamicSalesVsTempPlot"), p(span(strong("Figure 2."), "Effect of temperature on weekly sales for top, middle and bottom ranking stores by average sales")))), 
                                           linebreaks(2)
                                       ))
                              
@@ -102,33 +109,37 @@ server <- function(input, output) {
   # Summary stats data table
   output$sumStatsTable <- renderDataTable({
     
+    # Summarise function for generating the tibble
     sumTable <- walmart %>% dplyr::group_by(Store) %>% 
       summarise(MeanWeeklySales = mean(Weekly_Sales), 
-                # SEMWeeklySales = sem(Weekly_Sales), 
                 MedianWeeklySales = median(Weekly_Sales), 
                 MeanTemp = mean(Temperature), 
                 MeanFuel = mean(Fuel_Price), 
                 MeanCPI = mean(CPI), 
                 MeanUnemp = mean(Unemployment))
     
+    # Make the table
     datatable(sumTable, rownames = FALSE, 
               colnames = c("Mean Weekly Sales", "Median Weekly Sales", 
                            "Mean Temp (\u00B0F)", "Mean Fuel Price ($)", 
                            "Mean CPI", "Mean Unemployment"),
               options = list(
-      columnDefs = list(list(className = 'dt-center', targets = "_all")), pageLength = 10)) %>% formatRound(colnames(sumTable), digits = c(0, 0, 0, 1, 2, 2, 2)) 
+      columnDefs = list(list(className = 'dt-center', targets = "_all")), 
+      pageLength = 10)) %>% formatRound(colnames(sumTable), 
+                                        digits = c(0, 0, 0, 1, 2, 2, 2)) 
   })
   
   ##### Weekly Sales #####
   # Weekly sales plot selected by holiday
   output$weeklySalesPlot <- renderPlotly({
       
-      if(input$holidayVal == "Yes"){
+      # Conditionals for holiday status with ylabels
+      if(input$holidayVal == "Holiday"){
         
         walmart <- walmart[walmart$Holiday_Flag == 1, ]
         ylab <- "Weekly holiday\nsales"
         
-      } else if(input$holidayVal == "No"){
+      } else if(input$holidayVal == "Non-holiday"){
         
         walmart <- walmart[walmart$Holiday_Flag == 0, ]
         ylab <- "Weekly non-holiday\nsales"
@@ -150,6 +161,38 @@ server <- function(input, output) {
              xaxis = list(showline = TRUE, tickangle = -45, hjust = -1, 
                           title = "Store"))
     })
+  
+  # dynamicSalesVsTempPlot
+  output$dynamicSalesVsTempPlot <- renderPlotly({
+    
+    # Rank the stores by average sales
+    avgSales <- walmart %>% dplyr::group_by(Store) %>% 
+      summarise(AvgSales = mean(Weekly_Sales))
+    avgSales <- avgSales[order(avgSales$AvgSales), ]
+    bottomThird <- avgSales[1:15,]$Store
+    midThird <- avgSales[16:30,]$Store
+    topThird <- avgSales[31:45,]$Store
+    
+    # Select for store rank
+    storeSelect <- switch(input$storeRank, 
+                          'Top third' = topThird, 
+                          'Middle third' = midThird, 
+                          'Bottom third' = bottomThird)
+    
+    # The plot
+    walmart[walmart$Store %in% storeSelect, ] %>%
+      plot_ly(x = ~Temperature, y = ~Weekly_Sales, 
+              color = ~Store, 
+              frame = ~Date, 
+              type = 'scatter', mode = 'markers', 
+              hoverinfo = 'text', 
+              text = ~paste('Store:', Store, '<br>', 
+                            'Wk Sales:', Weekly_Sales, '<br>',
+                            'Temp:', Temperature, '<br>')) %>%
+      layout(xaxis = list(showline = TRUE, title = 'Temperature (\u00B0F)'), 
+             yaxis = list(showline = TRUE, title = 'Weekly sales'), 
+             legend = list(title = list(text = ' Store')))
+  })
 
 }
 
