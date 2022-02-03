@@ -81,10 +81,9 @@ ui <- fluidPage(title = "SalesData",
                                       
                                       fluidPage(
                                         
-                                        fluidRow(column(width = 8, offset = 1, p(span(strong("Table 1."), "Summary statistics for the Walmart weekly sales dataset")), DT::dataTableOutput("sumStatsTable"))), 
+                                        fluidRow(column(width = 8, offset = 1, p(span(strong("Table 1."), "Summary statistics for the Walmart weekly sales dataset of 45 stores")), DT::dataTableOutput("sumStatsTable"))), 
                                         
-                                        linebreaks(2)
-                                      )),
+                                        linebreaks(2))),
                              
                              tabPanel("Weekly Sales", 
                                       
@@ -92,11 +91,14 @@ ui <- fluidPage(title = "SalesData",
                                           
                                           fluidRow(column(width = 10, plotlyOutput("weeklySalesPlot"), p(span(strong("Figure 1."), "Weekly sales of 45 stores"))), column(width = 2, wellPanel(selectInput("holidayVal", label = "Holiday status", choices = c("Both", "Holiday", "Non-holiday"))))),
                                           
-                                          linebreaks(2), 
-                                          
-                                          fluidRow(column(width = 2, wellPanel(selectInput("storeRank", label = "Store rank", choices = c('Top third', 'Middle third', 'Bottom third')))), column(width = 6, plotlyOutput("dynamicSalesVsTempPlot"), p(span(strong("Figure 2."), "Effect of temperature on weekly sales for top, middle and bottom ranking stores by average sales")))), 
-                                          linebreaks(2)
-                                      ))
+                                          linebreaks(2))), 
+                             
+                             tabPanel("Dynamic sales plot",
+                               
+                               fluidPage(
+                                 
+                                 fluidRow(column(width = 3, wellPanel(selectInput("storeRank", label = "Store rank", choices = c('Top third', 'Middle third', 'Bottom third')))), column(width = 6, plotlyOutput("dynamicSalesVsTempPlot"), p(span(strong("Figure 2."), "Effect of temperature on weekly sales for top, middle and bottom ranking stores by average sales")))), 
+                                 linebreaks(2)))
                              
                              
 
@@ -120,7 +122,8 @@ server <- function(input, output) {
     
     # Make the table
     datatable(sumTable, rownames = FALSE, 
-              colnames = c("Mean Weekly Sales", "Median Weekly Sales", 
+              colnames = c("Store", "Mean Weekly Sales", 
+                           "Median Weekly Sales", 
                            "Mean Temp (\u00B0F)", "Mean Fuel Price ($)", 
                            "Mean CPI", "Mean Unemployment"),
               options = list(
